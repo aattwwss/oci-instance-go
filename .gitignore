@@ -15,3 +15,5 @@
 # vendor/
 
 .env
+oci-instance-go
+oci-instance-go.exe
