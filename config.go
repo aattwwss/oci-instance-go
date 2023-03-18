@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"strings"
 
 	"github.com/caarlos0/env/v7"
 	"github.com/joho/godotenv"
@@ -19,14 +18,13 @@ type config struct {
 	OCPUS              int    `env:"OCI_OCPUS"`
 	MemoryInGbs        int    `env:"OCI_MEMORY_IN_GBS"`
 	Shape              string `env:"OCI_SHAPE"`
-	MaxInstances       int    `env:"OCI_MAX_INSTANCES"`
+	MaxInstances       int    `env:"OCI_MAX_INSTANCES" envDefault:"1"`
 	SSHPublicKey       string `env:"OCI_SSH_PUBLIC_KEY"`
 
 	// Optional
-	AvailabilityDomain  string `env:"OCI_AVAILABILITY_DOMAIN"`
-	AvailabilityDomains []string
-	BootVolumeSizeInGbs int    `env:"OCI_BOOT_VOLUME_SIZE_IN_GBS"`
-	BootVolumeId        string `env:"OCI_BOOT_VOLUME_ID"`
+	AvailabilityDomains []string `env:"OCI_AVAILABILITY_DOMAIN" envSeparator:","`
+	BootVolumeSizeInGbs int      `env:"OCI_BOOT_VOLUME_SIZE_IN_GBS"`
+	BootVolumeId        string   `env:"OCI_BOOT_VOLUME_ID"`
 }
 
 func loadConfig() config {
@@ -38,10 +36,6 @@ func loadConfig() config {
 	cfg := config{}
 	if err := env.Parse(&cfg); err != nil {
 		log.Fatal(err)
-	}
-
-	if cfg.AvailabilityDomain != "" {
-		cfg.AvailabilityDomains = strings.Split(cfg.AvailabilityDomain, ",")
 	}
 	return cfg
 }

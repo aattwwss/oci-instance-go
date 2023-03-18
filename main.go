@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
@@ -13,33 +14,46 @@ import (
 
 func main() {
 	cfg := loadConfig()
-	client, err := identity.NewIdentityClientWithConfigurationProvider(common.DefaultConfigProvider())
+	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(common.DefaultConfigProvider())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	coreClient, err := core.NewComputeClientWithConfigurationProvider(common.DefaultConfigProvider())
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	if len(cfg.AvailabilityDomains) == 0 {
-		cfg.AvailabilityDomains, err = ListAvailabilityDomains(client, cfg.TenancyID)
+		cfg.AvailabilityDomains, err = ListAvailabilityDomains(identityClient, cfg.TenancyID)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	// instances := ListInstances(domains[0].Name)
+	instances := ListInstances(coreClient, cfg.TenancyID)
 	b, _ := json.Marshal(cfg.AvailabilityDomains)
 	log.Println(string(b))
+	b, _ = json.Marshal(instances)
+	log.Println(string(b))
+
+	existingInstances := checkExistingInstances(cfg, instances)
+	if existingInstances != "" {
+		log.Println(existingInstances)
+		return
+	}
 }
-func ListAvailabilityDomains(client identity.IdentityClient, compartmentId string) ([]string, error) {
+func ListAvailabilityDomains(identityClient identity.IdentityClient, compartmentId string) ([]string, error) {
 
 	// Create a default authentication provider that uses the DEFAULT
 	// profile in the configuration file.
 	// Refer to <see href="https://docs.cloud.oracle.com/en-us/iaas/Content/API/Concepts/sdkconfig.htm#SDK_and_CLI_Configuration_File>the public documentation</see> on how to prepare a configuration file.
-	client, err := identity.NewIdentityClientWithConfigurationProvider(common.DefaultConfigProvider())
+	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(common.DefaultConfigProvider())
 	helpers.FatalIfError(err)
 
 	req := identity.ListAvailabilityDomainsRequest{CompartmentId: common.String(compartmentId)}
 
-	resp, err := client.ListAvailabilityDomains(context.Background(), req)
+	resp, err := identityClient.ListAvailabilityDomains(context.Background(), req)
 	helpers.FatalIfError(err)
 
 	var domainNames []string
@@ -49,21 +63,12 @@ func ListAvailabilityDomains(client identity.IdentityClient, compartmentId strin
 	return domainNames, nil
 }
 
-func ListInstances(availabilityDomain *string) []core.Instance {
-	// Create a default authentication provider that uses the DEFAULT
-	// profile in the configuration file.
-	// Refer to <see href="https://docs.cloud.oracle.com/en-us/iaas/Content/API/Concepts/sdkconfig.htm#SDK_and_CLI_Configuration_File>the public documentation</see> on how to prepare a configuration file.
-	client, err := core.NewComputeClientWithConfigurationProvider(common.DefaultConfigProvider())
-	helpers.FatalIfError(err)
-
-	// Create a request and dependent object(s).
-
+func ListInstances(client core.ComputeClient, compartmentId string) []core.Instance {
 	req := core.ListInstancesRequest{Page: common.String(""),
-		AvailabilityDomain: availabilityDomain,
-		Limit:              common.Int(78),
-		SortBy:             core.ListInstancesSortByTimecreated,
-		SortOrder:          core.ListInstancesSortOrderAsc,
-		CompartmentId:      common.String("ocid1.tenancy.oc1..aaaaaaaai7czu4a2llxchv7veudgj7cbg5fi3rerivgbmf2h7q4wrg54i37q")}
+		Limit:         common.Int(78),
+		SortBy:        core.ListInstancesSortByTimecreated,
+		SortOrder:     core.ListInstancesSortOrderAsc,
+		CompartmentId: common.String(compartmentId)}
 
 	// Send the request using the service client
 	resp, err := client.ListInstances(context.Background(), req)
@@ -71,4 +76,24 @@ func ListInstances(availabilityDomain *string) []core.Instance {
 
 	// Retrieve value from the response.
 	return resp.Items
+}
+
+func checkExistingInstances(cfg config, instances []core.Instance) string {
+	shape := cfg.Shape
+	maxInstances := cfg.MaxInstances
+	var displayNames []string
+	var states []core.InstanceLifecycleStateEnum
+	for _, instance := range instances {
+		if *instance.Shape == shape && instance.LifecycleState != core.InstanceLifecycleStateTerminated {
+			displayNames = append(displayNames, *instance.DisplayName)
+			states = append(states, instance.LifecycleState)
+		}
+	}
+
+	if len(displayNames) < maxInstances {
+		return ""
+	}
+
+	msg := fmt.Sprintf("Already have an instance(s) %v in state(s) (respectively) %v. User: %v\n", displayNames, states, cfg.UserID)
+	return msg
 }
