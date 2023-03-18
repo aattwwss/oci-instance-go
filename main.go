@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
@@ -12,10 +11,12 @@ import (
 )
 
 func main() {
-	domains := ListAvailabilityDomains()
-	instances := ListInstances(domains[0].Name)
-	b, _ := json.Marshal(instances)
-	fmt.Println(string(b))
+	cfg := loadConfig()
+	fmt.Printf("%+v\n", cfg)
+	// domains := ListAvailabilityDomains()
+	// instances := ListInstances(domains[0].Name)
+	// b, _ := json.Marshal(instances)
+	// fmt.Println(string(b))
 }
 func ListAvailabilityDomains() []identity.AvailabilityDomain {
 	// Create a default authentication provider that uses the DEFAULT
