@@ -2,9 +2,14 @@ package main
 
 import (
 	"errors"
+	"log"
+	"os"
+	"os/user"
+	"path/filepath"
 
 	"github.com/caarlos0/env/v7"
 	"github.com/joho/godotenv"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
 )
 
@@ -37,6 +42,31 @@ func (cfg config) validate() error {
 	}
 	return nil
 }
+
+func (cfg config) buildConfigProvider() (common.ConfigurationProvider, error) {
+	pkPath, _ := expand(cfg.PrivateKeyFilename)
+	pk, err := os.ReadFile(pkPath)
+	if err != nil {
+		return nil, err
+	}
+
+	cp := common.NewRawConfigurationProvider(cfg.TenancyID, cfg.UserID, cfg.Region, cfg.KeyFingerprint, string(pk), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	ok, err := common.IsConfigurationProviderValid(cp)
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		return cp, nil
+	}
+	log.Println("The config specified in .env is not valid, trying the default oci config")
+	cp = common.DefaultConfigProvider()
+	return cp, nil
+}
+
 func loadConfig() (config, error) {
 	err := godotenv.Load() // load .env file
 	if err != nil {
@@ -71,4 +101,16 @@ func buildSourceDetails(cfg config) core.InstanceSourceDetails {
 		ImageId:             &cfg.ImageID,
 		BootVolumeSizeInGBs: bootVolume,
 	}
+}
+
+func expand(path string) (string, error) {
+	if len(path) == 0 || path[0] != '~' {
+		return path, nil
+	}
+
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(usr.HomeDir, path[1:]), nil
 }

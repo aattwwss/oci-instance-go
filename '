@@ -24,17 +24,18 @@ func main() {
 	}
 
 	cp, err := cfg.buildConfigProvider()
+	cpp := *cp
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("new core client")
-	coreClient, err := core.NewComputeClientWithConfigurationProvider(cp)
+	log.Println("new identity client")
+	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(cpp)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("new identity client")
-	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(cp)
+	log.Println("new core client")
+	coreClient, err := core.NewComputeClientWithConfigurationProvider(common.DefaultConfigProvider())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -61,10 +62,17 @@ func main() {
 		log.Println(resp)
 	}
 }
-func ListAvailabilityDomains(client identity.IdentityClient, compartmentId string) ([]string, error) {
+func ListAvailabilityDomains(identityClient identity.IdentityClient, compartmentId string) ([]string, error) {
+
+	// Create a default authentication provider that uses the DEFAULT
+	// profile in the configuration file.
+	// Refer to <see href="https://docs.cloud.oracle.com/en-us/iaas/Content/API/Concepts/sdkconfig.htm#SDK_and_CLI_Configuration_File>the public documentation</see> on how to prepare a configuration file.
+	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(common.DefaultConfigProvider())
+	helpers.FatalIfError(err)
+
 	req := identity.ListAvailabilityDomainsRequest{CompartmentId: common.String(compartmentId)}
 
-	resp, err := client.ListAvailabilityDomains(context.Background(), req)
+	resp, err := identityClient.ListAvailabilityDomains(context.Background(), req)
 	helpers.FatalIfError(err)
 
 	var domainNames []string
