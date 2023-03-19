@@ -1,6 +1,33 @@
 # oci-instance-go
 A golang port of https://github.com/hitrov/oci-arm-host-capacity
 
+# Confiuration
+Follow the same configuration guide in [here](https://github.com/hitrov/oci-arm-host-capacity#configuration) and populate the `.env` file accordingly.
+
 # OCI API Key Configuration
-The official [GO sdk](https://github.com/oracle/oci-go-sdk) is used in this project, where it will attempt to load the API key from `$HOME/.oci/config`.
-This script will do the same so you need to specify the config file location in `OCI_CONFIG_PATH` env.
+I have also added support for the default configuration provider from the official  [GO sdk](https://github.com/oracle/oci-go-sdk). If you are already have the
+config file and private key in their default location of `$HOME/.oci/config`, then you do not need to populate the following 4 fields:
+
+- `OCI_REGION`
+- `OCI_USER_ID`
+- `OCI_TENANCY_ID`
+- `OCI_KEY_FINGERPRINT`
+
+# Running the script
+## Without compiling
+```shell
+git clone https://github.com/aattwwss/oci-instance-go.git
+cd oci-instance-go
+cp /path/to/.env .
+go run .
+```
+
+## With compiling
+As GO allows you to compile the program into an executable, we run the executable with the `.env` file anywhere within the same platform.
+```shell
+git clone https://github.com/aattwwss/oci-instance-go.git
+cd oci-instance-go
+cp /path/to/.env .
+go build .
+./oci-instance-go
+```
