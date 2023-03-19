@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
@@ -13,7 +14,16 @@ import (
 )
 
 func main() {
-	cfg := loadConfig()
+	cfg, err := loadConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	cfg.validate()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(common.DefaultConfigProvider())
 	if err != nil {
 		log.Fatal(err)
@@ -41,6 +51,10 @@ func main() {
 	if existingInstances != "" {
 		log.Println(existingInstances)
 		return
+	}
+
+	for _, domain := range cfg.AvailabilityDomains {
+		createInstance(coreClient, domain)
 	}
 }
 func ListAvailabilityDomains(identityClient identity.IdentityClient, compartmentId string) ([]string, error) {
@@ -96,4 +110,45 @@ func checkExistingInstances(cfg config, instances []core.Instance) string {
 
 	msg := fmt.Sprintf("Already have an instance(s) %v in state(s) (respectively) %v. User: %v\n", displayNames, states, cfg.UserID)
 	return msg
+}
+
+func createInstance(client core.ComputeClient, cfg config, domain string) {
+	req := core.LaunchInstanceRequest{
+		LaunchInstanceDetails: core.LaunchInstanceDetails{
+			Metadata:           map[string]string{"ssh_authorized_keys": cfg.SSHPublicKey},
+			Shape:              &cfg.Shape,
+			CompartmentId:      &cfg.TenancyID,
+			DisplayName:        common.String("instance-" + time.Now().Format("20060102-1504")),
+			AvailabilityDomain: &domain,
+			SourceDetails:      buildSourceDetails(cfg),
+			CreateVnicDetails: &core.CreateVnicDetails{
+				AssignPublicIp:         common.Bool(false),
+				SubnetId:               &cfg.SubnetID,
+				AssignPrivateDnsRecord: common.Bool(true),
+			},
+			AgentConfig: &core.LaunchInstanceAgentConfigDetails{
+				PluginsConfig: []core.InstanceAgentPluginConfigDetails{
+					{
+						Name:         common.String("Compute Instance Monitoring"),
+						DesiredState: "ENABLED",
+					},
+				},
+				IsMonitoringDisabled: common.Bool(false),
+				IsManagementDisabled: common.Bool(false),
+			},
+			DefinedTags:  make(map[string]map[string]interface{}),
+			FreeformTags: make(map[string]string),
+			InstanceOptions: &core.InstanceOptions{
+				AreLegacyImdsEndpointsDisabled: common.Bool(false),
+			},
+			AvailabilityConfig: &core.LaunchInstanceAvailabilityConfigDetails{
+				RecoveryAction: core.LaunchInstanceAvailabilityConfigDetailsRecoveryActionRestoreInstance,
+			},
+			ShapeConfig: &core.LaunchInstanceShapeConfigDetails{
+				Ocpus:       &cfg.OCPUS,
+				MemoryInGBs: &cfg.MemoryInGbs,
+			},
+		},
+	}
+	client.LaunchInstance(context.Background(), req)
 }
