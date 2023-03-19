@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -42,11 +41,6 @@ func main() {
 	}
 
 	instances := ListInstances(coreClient, cfg.TenancyID)
-	b, _ := json.Marshal(cfg.AvailabilityDomains)
-	log.Println(string(b))
-	b, _ = json.Marshal(instances)
-	log.Println(string(b))
-
 	existingInstances := checkExistingInstances(cfg, instances)
 	if existingInstances != "" {
 		log.Println(existingInstances)
@@ -54,7 +48,11 @@ func main() {
 	}
 
 	for _, domain := range cfg.AvailabilityDomains {
-		createInstance(coreClient, domain)
+		resp, err := createInstance(coreClient, cfg, domain)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println(resp)
 	}
 }
 func ListAvailabilityDomains(identityClient identity.IdentityClient, compartmentId string) ([]string, error) {
@@ -112,7 +110,7 @@ func checkExistingInstances(cfg config, instances []core.Instance) string {
 	return msg
 }
 
-func createInstance(client core.ComputeClient, cfg config, domain string) {
+func createInstance(client core.ComputeClient, cfg config, domain string) (core.LaunchInstanceResponse, error) {
 	req := core.LaunchInstanceRequest{
 		LaunchInstanceDetails: core.LaunchInstanceDetails{
 			Metadata:           map[string]string{"ssh_authorized_keys": cfg.SSHPublicKey},
@@ -150,5 +148,5 @@ func createInstance(client core.ComputeClient, cfg config, domain string) {
 			},
 		},
 	}
-	client.LaunchInstance(context.Background(), req)
+	return client.LaunchInstance(context.Background(), req)
 }
