@@ -31,3 +31,11 @@ cp /path/to/.env .
 go build .
 ./oci-instance-go
 ```
+
+
+## With prebuilt binaries
+In the [release](https://github.com/aattwwss/oci-instance-go/releases) page, download the binary for your OS and platform. Then run the binary
+and the `.env` file in the same folder.
+```shell
+./oci-instance-go
+```
