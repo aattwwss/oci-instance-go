@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
@@ -28,12 +29,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Println("new core client")
 	coreClient, err := core.NewComputeClientWithConfigurationProvider(cp)
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("new identity client")
+
 	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(cp)
 	if err != nil {
 		log.Fatal(err)
@@ -54,11 +54,17 @@ func main() {
 	}
 
 	for _, domain := range cfg.AvailabilityDomains {
+		log.Println("Trying domain: ", domain)
 		resp, err := createInstance(coreClient, cfg, domain)
-		if err != nil {
-			log.Fatal(err)
+		if err == nil {
+			handleSuccess()
+			return
 		}
-		log.Println(resp)
+		if !strings.Contains(err.Error(), "Out of host capacity") {
+			log.Println("Something went wrong: ", resp.HTTPResponse().Status)
+			return
+		}
+		log.Println("Domain out of capacity: ", domain)
 	}
 }
 func ListAvailabilityDomains(client identity.IdentityClient, compartmentId string) ([]string, error) {
@@ -149,3 +155,5 @@ func createInstance(client core.ComputeClient, cfg config, domain string) (core.
 	}
 	return client.LaunchInstance(context.Background(), req)
 }
+
+func handleSuccess() {}
