@@ -156,4 +156,6 @@ func createInstance(client core.ComputeClient, cfg config, domain string) (core.
 	return client.LaunchInstance(context.Background(), req)
 }
 
-func handleSuccess() {}
+func handleSuccess() {
+	log.Println("Instance created")
+}
