@@ -1,6 +1,8 @@
 # oci-instance-go
 A golang port of https://github.com/hitrov/oci-arm-host-capacity
 
+This script will attempt to create an instance in oracle cloud infrastructure according to the config in then `.env` file.
+
 # Confiuration
 Follow the same configuration guide in [here](https://github.com/hitrov/oci-arm-host-capacity#configuration) and populate the `.env` file accordingly.
 
