@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"strings"
@@ -14,6 +15,23 @@ import (
 )
 
 func main() {
+	var t int
+	flag.IntVar(&t, "t", 0, "Number of minutes between retries")
+	flag.Parse()
+
+	if t == 0 {
+		run()
+		return
+	}
+
+	log.Printf("Starting script with %v minutes delay.", t)
+	for true {
+		run()
+		time.Sleep(time.Duration(t) * time.Minute)
+	}
+}
+
+func run() {
 	cfg, err := loadConfig()
 	if err != nil {
 		log.Fatal(err)
