@@ -16,6 +16,18 @@ config file and private key in their default location of `$HOME/.oci/config`, th
 - `OCI_KEY_FINGERPRINT`
 
 # Running the script
+## Included retry with delay
+You can set the script to run forever with the specified delay in minute using the `-t` flag.
+```shell
+// run one time and end
+go run .
+./oci-instance-go 
+
+//retry every 1 minute
+go run . -t=1
+./oci-instance-go  -t=1
+```
+
 ## Without compiling
 ```shell
 git clone https://github.com/aattwwss/oci-instance-go.git
