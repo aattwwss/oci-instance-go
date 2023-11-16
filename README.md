@@ -28,6 +28,16 @@ go run . -t=1
 ./oci-instance-go  -t=1
 ```
 
+## With prebuilt binaries
+In the [release](https://github.com/aattwwss/oci-instance-go/releases) page, download the binary for your OS and platform. Then run the binary
+and the `.env` file in the same folder.
+```shell
+# run one time and end
+./oci-instance-go
+#retry every 1 minute
+./oci-instance-go  -t=1 
+```
+
 ## Without compiling
 ```shell
 git clone https://github.com/aattwwss/oci-instance-go.git
@@ -47,9 +57,4 @@ go build .
 ```
 
 
-## With prebuilt binaries
-In the [release](https://github.com/aattwwss/oci-instance-go/releases) page, download the binary for your OS and platform. Then run the binary
-and the `.env` file in the same folder.
-```shell
-./oci-instance-go
-```
+
