@@ -36,7 +36,6 @@ func run() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Loaded config: %+v", cfg)
 
 	cfg.validate()
 	if err != nil {
