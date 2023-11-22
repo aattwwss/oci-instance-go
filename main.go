@@ -36,6 +36,7 @@ func run() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Loaded config: %+v", cfg)
 
 	cfg.validate()
 	if err != nil {
@@ -139,7 +140,7 @@ func createInstance(client core.ComputeClient, cfg config, domain string) (core.
 			Metadata:           map[string]string{"ssh_authorized_keys": cfg.SSHPublicKey},
 			Shape:              &cfg.Shape,
 			CompartmentId:      &cfg.TenancyID,
-			DisplayName:        common.String("instance-" + time.Now().Format("20060102-1504")),
+			DisplayName:        buildDisplayName(cfg.DisplayName),
 			AvailabilityDomain: &domain,
 			SourceDetails:      buildSourceDetails(cfg),
 			CreateVnicDetails: &core.CreateVnicDetails{
@@ -172,6 +173,17 @@ func createInstance(client core.ComputeClient, cfg config, domain string) (core.
 		},
 	}
 	return client.LaunchInstance(context.Background(), req)
+}
+
+func buildDisplayName(s string) *string {
+	var displayName string
+
+	if s != "" {
+		displayName = s 
+	} else {
+		displayName = "instance-" + time.Now().Format("20060102-1504")
+	}
+	return &displayName
 }
 
 func handleSuccess() {
