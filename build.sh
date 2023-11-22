@@ -2,7 +2,7 @@
 
 # Set the name and version of your Go program
 program_name="oci-instance-go"
-version="v1.1.0"
+version="${RELEASE_VERSION}:-v1.1.0"
 
 # Create the bin folder if it doesn't exist
 mkdir -p bin
