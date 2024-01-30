@@ -31,6 +31,7 @@ type config struct {
 	AvailabilityDomains []string `env:"OCI_AVAILABILITY_DOMAIN" envSeparator:","`
 	BootVolumeSizeInGbs int64    `env:"OCI_BOOT_VOLUME_SIZE_IN_GBS"`
 	BootVolumeId        string   `env:"OCI_BOOT_VOLUME_ID"`
+	DisplayName         string   `env:"OCI_DISPLAY_NAME"`
 }
 
 func (cfg config) validate() error {
