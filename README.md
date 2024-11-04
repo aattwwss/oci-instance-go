@@ -6,6 +6,12 @@ This script will attempt to automatically create an instance in oracle cloud inf
 # Confiuration
 Follow the same configuration guide in [here](https://github.com/hitrov/oci-arm-host-capacity#configuration) and populate the `.env` file accordingly.
 
+1. Go to https://cloud.oracle.com/identity/domains/my-profile/api-keys
+2. Click on `Add API Key`
+3. Download the private key
+4. Click on `Add`
+5. Either fill the .env file with the content of the config file, or use the config file directly as described below
+
 # OCI API Key Configuration
 I have also added support for the default configuration provider from the official  [GO sdk](https://github.com/oracle/oci-go-sdk). If you have the
 config file and private key in their default location of `$HOME/.oci/config`, then you do not need to populate the following 4 fields:
