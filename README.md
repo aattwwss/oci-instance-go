@@ -29,9 +29,9 @@ You can set the script to run forever with the specified delay in minute using t
 go run .
 ./oci-instance-go 
 
-#retry every 1 minute
-go run . -t=1
-./oci-instance-go  -t=1
+#retry every 15 minutes
+go run . -t=15
+./oci-instance-go  -t=15
 ```
 
 ## With prebuilt binaries
@@ -40,8 +40,8 @@ and the `.env` file in the same folder.
 ```shell
 # run one time and end
 ./oci-instance-go
-#retry every 1 minute
-./oci-instance-go  -t=1 
+#retry every 15 minutes
+./oci-instance-go  -t=1 5
 ```
 
 ## Without compiling
