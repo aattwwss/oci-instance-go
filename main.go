@@ -47,6 +47,11 @@ func run() {
 		log.Fatal(err)
 	}
 
+	cfg.TenancyID, err = cp.TenancyOCID()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	coreClient, err := core.NewComputeClientWithConfigurationProvider(cp)
 	if err != nil {
 		log.Fatal(err)
@@ -71,15 +76,23 @@ func run() {
 		return
 	}
 
+	// Names of live instances, used to pick the next free display name.
+	takenNames := make(map[string]bool)
+	for _, i := range instances {
+		if i.LifecycleState != core.InstanceLifecycleStateTerminated {
+			takenNames[*i.DisplayName] = true
+		}
+	}
+
 	for _, domain := range cfg.AvailabilityDomains {
 		log.Println("Trying domain: ", domain)
-		resp, err := createInstance(coreClient, cfg, domain)
+		_, err := createInstance(coreClient, cfg, domain, takenNames)
 		if err == nil {
 			handleSuccess()
 			return
 		}
 		if !strings.Contains(err.Error(), "Out of host capacity") {
-			log.Println("Something went wrong: ", resp.HTTPResponse().Status)
+			log.Println("Something went wrong: ", err)
 			return
 		}
 		log.Println("Domain out of capacity: ", domain)
@@ -129,21 +142,21 @@ func checkExistingInstances(cfg config, instances []core.Instance) string {
 		return ""
 	}
 
-	msg := fmt.Sprintf("Already have an instance(s) %v in state(s) (respectively) %v. User: %v\n", displayNames, states, cfg.UserID)
+	msg := fmt.Sprintf("Already have an instance(s) %v in state(s) (respectively) %v\n", displayNames, states)
 	return msg
 }
 
-func createInstance(client core.ComputeClient, cfg config, domain string) (core.LaunchInstanceResponse, error) {
+func createInstance(client core.ComputeClient, cfg config, domain string, takenNames map[string]bool) (core.LaunchInstanceResponse, error) {
 	req := core.LaunchInstanceRequest{
 		LaunchInstanceDetails: core.LaunchInstanceDetails{
 			Metadata:           map[string]string{"ssh_authorized_keys": cfg.SSHPublicKey},
 			Shape:              &cfg.Shape,
 			CompartmentId:      &cfg.TenancyID,
-			DisplayName:        common.String("instance-" + time.Now().Format("20060102-1504")),
+			DisplayName:        common.String(displayName(cfg, takenNames)),
 			AvailabilityDomain: &domain,
 			SourceDetails:      buildSourceDetails(cfg),
 			CreateVnicDetails: &core.CreateVnicDetails{
-				AssignPublicIp:         common.Bool(false),
+				AssignPublicIp:         common.Bool(cfg.AssignPublicIP),
 				SubnetId:               &cfg.SubnetID,
 				AssignPrivateDnsRecord: common.Bool(true),
 			},
@@ -165,15 +178,32 @@ func createInstance(client core.ComputeClient, cfg config, domain string) (core.
 			AvailabilityConfig: &core.LaunchInstanceAvailabilityConfigDetails{
 				RecoveryAction: core.LaunchInstanceAvailabilityConfigDetailsRecoveryActionRestoreInstance,
 			},
-			ShapeConfig: &core.LaunchInstanceShapeConfigDetails{
-				Ocpus:       &cfg.OCPUS,
-				MemoryInGBs: &cfg.MemoryInGbs,
-			},
 		},
+	}
+	// In-transit encryption for paravirtualized boot/data volume attachments.
+	req.LaunchInstanceDetails.IsPvEncryptionInTransitEnabled = &cfg.PvEncryptionInTransit
+	// Fixed shapes like VM.Standard.E2.1.Micro have built-in OCPU/memory;
+	// sending a zeroed ShapeConfig causes InternalError from the API.
+	if cfg.OCPUS > 0 || cfg.MemoryInGbs > 0 {
+		req.LaunchInstanceDetails.ShapeConfig = &core.LaunchInstanceShapeConfigDetails{
+			Ocpus:       &cfg.OCPUS,
+			MemoryInGBs: &cfg.MemoryInGbs,
+		}
 	}
 	return client.LaunchInstance(context.Background(), req)
 }
 
 func handleSuccess() {
 	log.Println("Instance created")
+}
+
+func displayName(cfg config, takenNames map[string]bool) string {
+	if cfg.DisplayName == "" {
+		return "instance-" + time.Now().Format("20060102-1504")
+	}
+	name := cfg.DisplayName
+	for n := 2; takenNames[name]; n++ {
+		name = fmt.Sprintf("%s-%d", cfg.DisplayName, n)
+	}
+	return name
 }

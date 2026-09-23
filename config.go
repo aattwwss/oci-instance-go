@@ -2,10 +2,6 @@ package main
 
 import (
 	"errors"
-	"log"
-	"os"
-	"os/user"
-	"path/filepath"
 
 	"github.com/caarlos0/env/v7"
 	"github.com/joho/godotenv"
@@ -14,23 +10,24 @@ import (
 )
 
 type config struct {
-	Region             string  `env:"OCI_REGION"`
-	UserID             string  `env:"OCI_USER_ID"`
-	TenancyID          string  `env:"OCI_TENANCY_ID"`
-	KeyFingerprint     string  `env:"OCI_KEY_FINGERPRINT"`
-	PrivateKeyFilename string  `env:"OCI_PRIVATE_KEY_FILENAME"`
-	SubnetID           string  `env:"OCI_SUBNET_ID"`
-	ImageID            string  `env:"OCI_IMAGE_ID"`
-	OCPUS              float32 `env:"OCI_OCPUS"`
-	MemoryInGbs        float32 `env:"OCI_MEMORY_IN_GBS"`
-	Shape              string  `env:"OCI_SHAPE"`
-	MaxInstances       int     `env:"OCI_MAX_INSTANCES" envDefault:"1"`
-	SSHPublicKey       string  `env:"OCI_SSH_PUBLIC_KEY"`
+	// Filled from the configuration provider (~/.oci/config), not from .env.
+	TenancyID string
+
+	SubnetID       string  `env:"OCI_SUBNET_ID"`
+	ImageID        string  `env:"OCI_IMAGE_ID"`
+	OCPUS          float32 `env:"OCI_OCPUS"`
+	MemoryInGbs    float32 `env:"OCI_MEMORY_IN_GBS"`
+	Shape          string  `env:"OCI_SHAPE"`
+	MaxInstances   int     `env:"OCI_MAX_INSTANCES" envDefault:"1"`
+	SSHPublicKey   string  `env:"OCI_SSH_PUBLIC_KEY"`
+	DisplayName    string  `env:"OCI_DISPLAY_NAME"`
+	AssignPublicIP bool    `env:"OCI_ASSIGN_PUBLIC_IP" envDefault:"true"`
 
 	// Optional
-	AvailabilityDomains []string `env:"OCI_AVAILABILITY_DOMAIN" envSeparator:","`
-	BootVolumeSizeInGbs int64    `env:"OCI_BOOT_VOLUME_SIZE_IN_GBS"`
-	BootVolumeId        string   `env:"OCI_BOOT_VOLUME_ID"`
+	AvailabilityDomains   []string `env:"OCI_AVAILABILITY_DOMAIN" envSeparator:","`
+	PvEncryptionInTransit bool     `env:"OCI_PV_ENCRYPTION_IN_TRANSIT" envDefault:"true"`
+	BootVolumeSizeInGbs   int64    `env:"OCI_BOOT_VOLUME_SIZE_IN_GBS"`
+	BootVolumeId          string   `env:"OCI_BOOT_VOLUME_ID"`
 }
 
 func (cfg config) validate() error {
@@ -44,26 +41,12 @@ func (cfg config) validate() error {
 }
 
 func (cfg config) buildConfigProvider() (common.ConfigurationProvider, error) {
-	pkPath, _ := expand(cfg.PrivateKeyFilename)
-	pk, err := os.ReadFile(pkPath)
-	if err != nil {
-		return nil, err
-	}
-
-	cp := common.NewRawConfigurationProvider(cfg.TenancyID, cfg.UserID, cfg.Region, cfg.KeyFingerprint, string(pk), nil)
-	if err != nil {
-		return nil, err
-	}
-
+	// Credentials come exclusively from ~/.oci/config ([DEFAULT] profile).
+	cp := common.DefaultConfigProvider()
 	ok, err := common.IsConfigurationProviderValid(cp)
-	if err != nil {
-		return nil, err
+	if err != nil || !ok {
+		return nil, errors.New("~/.oci/config is missing or not valid")
 	}
-	if ok {
-		return cp, nil
-	}
-	log.Println("The config specified in .env is not valid, trying the default oci config")
-	cp = common.DefaultConfigProvider()
 	return cp, nil
 }
 
@@ -101,16 +84,4 @@ func buildSourceDetails(cfg config) core.InstanceSourceDetails {
 		ImageId:             &cfg.ImageID,
 		BootVolumeSizeInGBs: bootVolume,
 	}
-}
-
-func expand(path string) (string, error) {
-	if len(path) == 0 || path[0] != '~' {
-		return path, nil
-	}
-
-	usr, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(usr.HomeDir, path[1:]), nil
 }

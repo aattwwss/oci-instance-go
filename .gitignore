@@ -15,5 +15,7 @@
 # vendor/
 
 .env
+.env.bak
+.env*.bak
 oci-instance-go
 oci-instance-go.exe
